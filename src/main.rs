@@ -16,9 +16,9 @@ fn sign_message(message: &str, secret_key: SecretKey) -> String {
     let mut complete_signature = vec![recovery_id.to_i32() as u8];
     complete_signature.extend_from_slice(&signature_data);
 
-    let zbase32_encoded_message = zbase32::encode_full_bytes(prefixed_message.as_bytes());
+    let zbase32_encoded_signature = zbase32::encode_full_bytes(complete_signature.as_slice());
 
-    zbase32_encoded_message
+    zbase32_encoded_signature
 }
 
 fn main() {
