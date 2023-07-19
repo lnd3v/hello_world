@@ -31,6 +31,6 @@ jobs:
         run: |
           cargo build
 
-      - name: run hello world
+      - name: test sign & verify
         run: |
-          ${{ github.workspace }}/target/debug/hello_world
+          make
