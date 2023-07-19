@@ -12,11 +12,11 @@ use secp256k1::rand;
 fn sign_message(message: &str, secret_key: SecretKey) -> Option<String> {
     let secp = Secp256k1::new();
     let prefixed_message = format!("Lightning Signed Message:{}", message);
-    let message_hash = Sha256::digest(prefixed_message.as_bytes());
+    let message_hash = Sha256::digest(&Sha256::digest(prefixed_message.as_bytes()));
     let msg = Message::from_slice(&message_hash).ok()?;
     let signature = secp.sign_ecdsa_recoverable(&msg, &secret_key);
     let (recovery_id, signature_data) = signature.serialize_compact();
-    let mut complete_signature = vec![recovery_id.to_i32() as u8];
+    let mut complete_signature = vec![(recovery_id.to_i32() + 31) as u8];
     complete_signature.extend_from_slice(&signature_data);
     Some(zbase32::encode_full_bytes(complete_signature.as_slice()))
 }
@@ -24,12 +24,12 @@ fn sign_message(message: &str, secret_key: SecretKey) -> Option<String> {
 fn verify_message(message: &str, signature: &str, public_key: PublicKey) -> Option<bool> {
     let secp = Secp256k1::new();
     let signature_bytes = zbase32::decode_full_bytes(signature.as_bytes()).ok()?;
-    let recovery_id = RecoveryId::from_i32((signature_bytes[0]) as i32).ok()?;
+    let recovery_id = RecoveryId::from_i32((signature_bytes[0] - 31) as i32).ok()?;
     let signature_data = &signature_bytes[1..];
     let recoverable_signature =
         RecoverableSignature::from_compact(signature_data, recovery_id).ok()?;
     let prefixed_message = format!("Lightning Signed Message:{}", message);
-    let message_hash = Sha256::digest(&prefixed_message.as_bytes());
+    let message_hash = Sha256::digest(&Sha256::digest(&prefixed_message.as_bytes()));
     let msg = Message::from_slice(&message_hash).ok()?;
     let recovered_public_key = secp.recover_ecdsa(&msg, &recoverable_signature).ok()?;
     Some(recovered_public_key == public_key)
@@ -218,10 +218,10 @@ mod tests {
     
         let signature = sign_message(message, secret_key).expect("Failed to sign message");
         let prefixed_message = format!("Lightning Signed Message:{}", message);
-        let message_hash = Sha256::digest(&prefixed_message.as_bytes());
+        let message_hash = Sha256::digest(&Sha256::digest(&prefixed_message.as_bytes()));
         let msg = Message::from_slice(&message_hash).unwrap();
         let signature_bytes = zbase32::decode_full_bytes(signature.as_bytes()).unwrap();
-        let recovery_id = RecoveryId::from_i32((signature_bytes[0]) as i32).unwrap();
+        let recovery_id = RecoveryId::from_i32((signature_bytes[0] - 31) as i32).unwrap();
         let signature_data = &signature_bytes[1..];
         let recoverable_signature = RecoverableSignature::from_compact(signature_data, recovery_id).unwrap();
         let recovered_public_key = secp.recover_ecdsa(&msg, &recoverable_signature).unwrap();
